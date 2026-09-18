@@ -1,0 +1,5 @@
+- [ ] Import uploaded Tutu workspace
+- [ ] Add WhatsApp workspace screens and navigation
+- [ ] Connect Lovable Cloud and WhatsApp connector for live backend integration
+- [ ] Add secure webhook/message data model and handlers
+- [ ] Verify desktop/mobile preview and route metadata
