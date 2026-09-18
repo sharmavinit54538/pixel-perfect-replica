@@ -3,3 +3,4 @@
 - [ ] Connect Lovable Cloud and WhatsApp connector for live backend integration
 - [ ] Add secure webhook/message data model and handlers
 - [ ] Verify desktop/mobile preview and route metadata
+- [ ] Secure the provided WhatsApp connection values without exposing them in app code
