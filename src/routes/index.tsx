@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-function Kpi({ label, value, note, tone = "", delay = 0, wide = false, chip }: { label: string; value: string; note: string; tone?: string; delay?: number; wide?: boolean; chip?: string }) {
+function Kpi({ label, value, note, tone = "", delay = 0, wide = false, chip }: { label: string; value: string; note: string; tone?: string; delay?: number; wide?: boolean; chip?: string | undefined }) {
   return (
     <Panel className={`p-4 ${wide ? "col-span-2" : ""}`} delay={delay}>
       <div className="flex items-center justify-between">
