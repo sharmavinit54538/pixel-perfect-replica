@@ -178,6 +178,9 @@ function LeadsPage() {
             <ButtonGhost className="flex-1" onClick={() => setSelected(null)}>
               Close
             </ButtonGhost>
+            <Link to="/whatsapp" search={{ phone: selected?.phone ?? "" } as any} className="flex-1">
+              <ButtonAzure className="w-full">Send WhatsApp</ButtonAzure>
+            </Link>
             <ButtonAzure
               className="flex-1"
               onClick={() => {

@@ -8,6 +8,7 @@ import {
   UserRound,
   CalendarClock,
   MapPinned,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ const projectsTabs: readonly SubNavTab[] = [
 const communicationTabs: readonly SubNavTab[] = [
   { to: "/agent", label: "AI Agent", icon: BrainCircuit },
   { to: "/calls", label: "Calls", icon: PhoneCall },
+  { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle },
   { to: "/notifications", label: "Notifications", icon: BellRing },
 ];
 
