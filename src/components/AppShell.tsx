@@ -53,7 +53,7 @@ const navEntries: readonly NavItem[] = [
     to: "/agent",
     label: "Communication",
     icon: MessageSquare,
-    activeMatch: ["/agent", "/calls", "/notifications"],
+    activeMatch: ["/agent", "/calls", "/notifications", "/whatsapp"],
   },
   {
     to: "/leads",
