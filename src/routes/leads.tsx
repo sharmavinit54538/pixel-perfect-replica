@@ -15,6 +15,7 @@ import {
   statusTone,
 } from "@/components/ui-kit";
 import type { Lead, Project } from "@/types";
+import { DEFAULT_CONTACTS } from "@/lib/call-store";
 
 export const Route = createFileRoute("/leads")({
   head: () => ({
@@ -43,7 +44,19 @@ function interestTone(interest: Lead["interest"]) {
 }
 
 function LeadsPage() {
-  const [leads] = useState<Lead[]>([]);
+  const [leads] = useState<Lead[]>(() =>
+    DEFAULT_CONTACTS.map((contact, index) => ({
+      id: contact.id,
+      name: contact.name,
+      phone: contact.phone,
+      project: contact.project,
+      interest: contact.status === "Hot" ? "High" : contact.status === "Warm" ? "Medium" : "Low",
+      budget: contact.budget,
+      status: contact.status === "Interested" ? "Warm" : contact.status === "Hot" || contact.status === "Warm" ? contact.status : "Cold",
+      followUp: index === 0 ? "Today · 3:30 PM" : "Not scheduled",
+      notes: "Captured from the Tutu AI calling workspace.",
+    })),
+  );
   const [projects] = useState<Project[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState(statusOptions[0]);
