@@ -100,11 +100,6 @@ function StatusMark({ status }: { status: string }) {
 function WhatsAppPage() {
   const queryClient = useQueryClient();
   const inboxFn = useQuery({ queryKey: ["whatsapp", "inbox"], queryFn: () => getWhatsAppInbox() });
-  const getMessagesFn = useQuery({
-    queryKey: ["whatsapp", "messages-fn"],
-    queryFn: () => getWhatsAppMessages({ data: { conversationId: "00000000-0000-0000-0000-000000000000" } }),
-    enabled: false,
-  });
   const sendFn = useMutation({ mutationFn: sendWhatsAppMessage });
   const [selectedPhone, setSelectedPhone] = useState("");
   const [search, setSearch] = useState("");
@@ -222,9 +217,9 @@ function WhatsAppPage() {
           <div className="flex items-center gap-2">
             <MessageCircle size={20} className="text-good" aria-hidden="true" />
             <h1 className="text-xl font-extrabold tracking-tight">WhatsApp</h1>
-            <Badge tone="good">Business connected</Badge>
+            <Badge tone="good">Business messaging</Badge>
           </div>
-          <p className="mt-1 text-sm text-sub">Choose an existing customer, send a message, and follow its status.</p>
+          <p className="mt-1 text-sm text-sub">Choose an existing lead, send a real WhatsApp message, and follow delivery updates.</p>
         </div>
         <ButtonGhost onClick={handleRefresh} className="flex items-center gap-2">
           <RefreshCw size={15} aria-hidden="true" /> Refresh

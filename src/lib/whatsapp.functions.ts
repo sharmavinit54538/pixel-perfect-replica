@@ -30,6 +30,15 @@ function friendlyProviderError(status: number) {
   return "WhatsApp could not accept the message right now. Try again shortly.";
 }
 
+function initialsForName(name: string) {
+  return name
+    .split(/\s+/)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 export const getWhatsAppInbox = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -116,16 +125,16 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
 
     if (messageInsertError || !pendingMessage) throw new Error("Could not queue the WhatsApp message.");
 
-    const phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
-    const accessToken = process.env["WHATSAPP_API_KEY"];
-    const apiBaseUrl = (process.env["WHATSAPP_API_BASE_URL"] || "https://graph.facebook.com/v22.0").replace(/\/$/, "");
+    const lovableApiKey = process.env["LOVABLE_API_KEY"];
+    const whatsappApiKey = process.env["WHATSAPP_API_KEY"];
 
-    if (!phoneNumberId || !accessToken) {
-      await context.supabase
+    if (!lovableApiKey || !whatsappApiKey) {
+      const { error } = await context.supabase
         .from("whatsapp_messages")
         .update({ status: "failed", error_reason: "WhatsApp connection is not configured." })
         .eq("id", pendingMessage.id)
         .eq("user_id", context.userId);
+      if (error) throw new Error("The message was queued, but its failed status could not be saved.");
       return {
         ok: false,
         conversationId,
@@ -138,15 +147,15 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
     let response: Response;
     let providerMessageId: string | undefined;
     try {
-      response = await fetch(`${apiBaseUrl}/${phoneNumberId}/messages`, {
+      response = await fetch("https://connector-gateway.lovable.dev/whatsapp/messages", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${lovableApiKey}`,
+          "X-Connection-Api-Key": whatsappApiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           messaging_product: "whatsapp",
-          recipient_type: "individual",
           to: recipientPhone,
           type: "text",
           text: { preview_url: false, body: data.message },
@@ -154,27 +163,32 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
       });
 
       const providerPayload = (await response.json().catch(() => null)) as
-        | { messages?: Array<{ id?: string }> }
+        | { messages?: Array<{ id?: string }>; error?: { message?: string } }
         | null;
       providerMessageId = providerPayload?.messages?.[0]?.id;
+      if (!response.ok && providerPayload?.error?.message) {
+        console.error(`WhatsApp gateway request failed [${response.status}]: ${providerPayload.error.message}`);
+      }
     } catch {
       response = new Response(null, { status: 503 });
     }
 
     if (!response.ok || !providerMessageId) {
       const errorReason = friendlyProviderError(response.status);
-      await context.supabase
+      const { error: failedStatusError } = await context.supabase
         .from("whatsapp_messages")
         .update({ status: "failed", error_reason: errorReason })
         .eq("id", pendingMessage.id)
         .eq("user_id", context.userId);
-      await context.supabase.from("whatsapp_audit_logs").insert({
+      if (failedStatusError) throw new Error("WhatsApp failed, but its local status could not be saved.");
+      const { error: failedAuditError } = await context.supabase.from("whatsapp_audit_logs").insert({
         user_id: context.userId,
         action: "message_failed",
         recipient_phone: recipientPhone,
         message_id: pendingMessage.id,
         metadata: { provider_status: response.status },
       });
+      if (failedAuditError) throw new Error("WhatsApp failed, but its audit record could not be saved.");
 
       return {
         ok: false,
@@ -193,7 +207,7 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
 
     if (updateError) throw new Error("WhatsApp sent, but its local status could not be saved.");
 
-    await context.supabase
+    const { error: conversationUpdateError } = await context.supabase
       .from("whatsapp_conversations")
       .update({
         contact_name: data.contactName,
@@ -203,14 +217,16 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
       })
       .eq("id", conversationId)
       .eq("user_id", context.userId);
+    if (conversationUpdateError) throw new Error("WhatsApp sent, but the conversation preview could not be updated.");
 
-    await context.supabase.from("whatsapp_audit_logs").insert({
+    const { error: auditError } = await context.supabase.from("whatsapp_audit_logs").insert({
       user_id: context.userId,
       action: "message_sent",
       recipient_phone: recipientPhone,
       message_id: pendingMessage.id,
       metadata: { provider_message_id: providerMessageId, message_type: "text" },
     });
+    if (auditError) throw new Error("WhatsApp sent, but its audit record could not be saved.");
 
     return {
       ok: true,
