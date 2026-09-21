@@ -198,7 +198,7 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
     }
 
     if (!response.ok || !providerMessageId) {
-      const errorReason = friendlyProviderError(response.status);
+      const errorReason = providerErrorMessage ?? friendlyProviderError(response.status);
       const { error: failedStatusError } = await context.supabase
         .from("whatsapp_messages")
         .update({ status: "failed", error_reason: errorReason })
