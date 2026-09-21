@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionTabs } from "@/components/SectionTabs";
-import { Badge, ButtonAzure, ButtonGhost, Label, Panel, SelectField, Toggle } from "@/components/ui-kit";
+import { ButtonAzure, ButtonGhost, Label, Panel, SelectField, Toggle } from "@/components/ui-kit";
 import {
   DEFAULT_CONTACTS,
   getActiveCallState,
@@ -72,8 +72,6 @@ function AgentPage() {
   const [dncRespect, setDncRespect] = useState(true);
 
   const voiceName = selectedVoice.split(" · ")[0] || "Aria";
-  const voiceInitial = voiceName.charAt(0).toUpperCase();
-
   const handleTriggerTestCall = (targetNum?: string, contactName?: string) => {
     const numToCall = targetNum || testNumber;
     if (!numToCall.trim() || numToCall.trim().length < 8) {
