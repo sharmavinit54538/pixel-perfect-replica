@@ -4,3 +4,5 @@
 - [x] Add secure message send handler and delivery-status history
 - [x] Verify desktop/mobile preview and route metadata
 - [x] Secure the provided WhatsApp connection values without exposing them in app code
+
+- [ ] Polish the selected AI Calling Assistant panel and controls
