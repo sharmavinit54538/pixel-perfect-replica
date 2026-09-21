@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   Area,
@@ -173,7 +174,10 @@ export function AnalyticsPage() {
             <option>Year to Date</option>
           </select>
           <ButtonGhost className="py-1.5 px-3 text-xs" onClick={() => alert("No data available to export.")}>
-            📥 Export CSV
+            <span className="inline-flex items-center gap-1.5">
+              <Download aria-hidden="true" className="size-3.5" strokeWidth={2} />
+              Export CSV
+            </span>
           </ButtonGhost>
         </div>
       }

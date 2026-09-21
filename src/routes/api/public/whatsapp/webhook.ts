@@ -42,17 +42,17 @@ function nextRetry(attempt: number) {
 
 function changeValue(payload: unknown) {
   const root = record(payload);
-  const entry = record(array(root?.entry)[0]);
-  const change = record(array(entry?.changes)[0]);
-  return record(change?.value) ?? {};
+  const entry = record(array(root?.["entry"])[0]);
+  const change = record(array(entry?.["changes"])[0]);
+  return record(change?.["value"]) ?? {};
 }
 
 async function processStatuses(admin: any, value: MetaRecord) {
   let pending = false;
-  for (const rawStatus of array(value.statuses)) {
+  for (const rawStatus of array(value["statuses"])) {
     const status = record(rawStatus);
-    const providerId = text(status?.id);
-    const nextStatus = text(status?.status);
+    const providerId = text(status?.["id"]);
+    const nextStatus = text(status?.["status"]);
     if (!providerId || !nextStatus) continue;
 
     const { data: message, error: lookupError } = await admin
@@ -66,20 +66,20 @@ async function processStatuses(admin: any, value: MetaRecord) {
       continue;
     }
 
-    const errors = array(status?.errors)
+    const errors = array(status?.["errors"])
       .map((item) => {
         const error = record(item);
-        return [text(error?.title), text(error?.message), text(error?.code)].filter(Boolean).join(": ");
+        return [text(error?.["title"]), text(error?.["message"]), text(error?.["code"])].filter(Boolean).join(": ");
       })
       .filter(Boolean)
       .join(" | ");
     const currentRank = statusRank[message.status] ?? 0;
     const nextRank = statusRank[nextStatus] ?? currentRank;
     const update: Record<string, unknown> = {};
-    if (nextRank >= currentRank || nextStatus === "failed") update.status = nextStatus;
-    if (errors) update.error_reason = errors;
-    const timestamp = providerTimestamp(status?.timestamp);
-    if (timestamp && (!message.provider_timestamp || nextRank >= currentRank)) update.provider_timestamp = timestamp;
+    if (nextRank >= currentRank || nextStatus === "failed") update["status"] = nextStatus;
+    if (errors) update["error_reason"] = errors;
+    const timestamp = providerTimestamp(status?.["timestamp"]);
+    if (timestamp && (!message.provider_timestamp || nextRank >= currentRank)) update["provider_timestamp"] = timestamp;
     if (Object.keys(update).length === 0) continue;
     const { error: updateError } = await admin.from("whatsapp_messages").update(update).eq("id", message.id);
     if (updateError) throw updateError;
@@ -89,10 +89,10 @@ async function processStatuses(admin: any, value: MetaRecord) {
 
 async function processMessages(admin: any, value: MetaRecord) {
   let pending = false;
-  for (const rawMessage of array(value.messages)) {
+  for (const rawMessage of array(value["messages"])) {
     const incoming = record(rawMessage);
-    const providerId = text(incoming?.id);
-    const from = phoneDigits(text(incoming?.from));
+    const providerId = text(incoming?.["id"]);
+    const from = phoneDigits(text(incoming?.["from"]));
     if (!providerId || !from) continue;
 
     const { data: conversation, error: conversationError } = await admin
@@ -116,8 +116,8 @@ async function processMessages(admin: any, value: MetaRecord) {
     if (existingError) throw existingError;
     if (existing) continue;
 
-    const messageType = text(incoming?.type) || "text";
-    const messageBody = record(incoming?.text)?.body ?? record(incoming?.image)?.caption ?? null;
+    const messageType = text(incoming?.["type"]) || "text";
+    const messageBody = record(incoming?.["text"])?.["body"] ?? record(incoming?.["image"])?.["caption"] ?? null;
     const { error: insertError } = await admin.from("whatsapp_messages").insert({
       user_id: conversation.user_id,
       conversation_id: conversation.id,
@@ -127,7 +127,7 @@ async function processMessages(admin: any, value: MetaRecord) {
       recipient_phone: from,
       body: typeof messageBody === "string" ? messageBody : null,
       status: "delivered",
-      provider_timestamp: providerTimestamp(incoming?.timestamp),
+      provider_timestamp: providerTimestamp(incoming?.["timestamp"]),
     });
     if (insertError) throw insertError;
 
