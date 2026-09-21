@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SectionTabs } from "@/components/SectionTabs";
-import { Badge, ButtonAzure, ButtonGhost, Label, Panel, SelectField, Toggle } from "@/components/ui-kit";
+import { ButtonAzure, ButtonGhost, Label, Panel, SelectField, Toggle } from "@/components/ui-kit";
 import {
   DEFAULT_CONTACTS,
   getActiveCallState,
@@ -11,7 +11,7 @@ import {
   subscribeCallStore,
   type ActiveCallState,
 } from "@/lib/call-store";
-import { Phone, Grid3X3, Users, Volume2, Sparkles, PhoneCall } from "lucide-react";
+import { Activity, Grid3X3, PhoneCall, Settings2, Volume2 } from "lucide-react";
 
 export const Route = createFileRoute("/agent")({
   head: () => ({
@@ -72,8 +72,6 @@ function AgentPage() {
   const [dncRespect, setDncRespect] = useState(true);
 
   const voiceName = selectedVoice.split(" · ")[0] || "Aria";
-  const voiceInitial = voiceName.charAt(0).toUpperCase();
-
   const handleTriggerTestCall = (targetNum?: string, contactName?: string) => {
     const numToCall = targetNum || testNumber;
     if (!numToCall.trim() || numToCall.trim().length < 8) {
@@ -91,44 +89,49 @@ function AgentPage() {
     <AppShell actions={<ButtonGhost className="hidden sm:block">Duplicate agent</ButtonGhost>}>
       <SectionTabs section="communication" />
       <section className="grid gap-4 lg:grid-cols-3">
-        <Panel className="p-4 lg:col-span-2" delay={0}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <Panel className="overflow-hidden border-command-line bg-command p-0 text-command-text lg:col-span-2" delay={0}>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-command-line px-5 py-4 sm:px-6">
             <div className="flex items-center gap-3">
-              <div className="grid size-11 place-items-center rounded-xl bg-ink text-sm font-extrabold text-white">
-                {voiceInitial}
+              <div className="grid size-10 place-items-center rounded-lg bg-azure/15 text-azure ring-1 ring-azure/25">
+                <Settings2 aria-hidden="true" className="size-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold tracking-tight">{voiceName}</h2>
-                <p className="font-mono text-[11px] text-sub">AI Calling Assistant · Ready</p>
+                <h2 className="text-base font-bold">Assistant configuration</h2>
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-command-muted">{voiceName} · Voice parameters</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Badge tone={on ? "good" : "neutral"}>{on ? "Live" : "Paused"}</Badge>
+              <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase text-command-muted">
+                <span className={`size-1.5 rounded-full ${on ? "bg-good" : "bg-command-muted"}`} />
+                {on ? "System online" : "Paused"}
+              </span>
               <Toggle on={on} onChange={setOn} />
             </div>
           </div>
 
-          <div className="mt-5">
-            <Label>Greeting / opening message</Label>
+          <div className="px-5 py-5 sm:px-6">
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-command-muted">Greeting / opening message</label>
+              <span className="font-mono text-[10px] text-command-muted">{greeting.length} characters</span>
+            </div>
             <textarea
               value={greeting}
               onChange={(e) => setGreeting(e.target.value)}
               rows={4}
               placeholder="Enter opening greeting script..."
-              className="mt-1.5 w-full rounded-xl border border-line bg-white/80 p-3 text-sm outline-none focus:border-azure/50 focus:ring-2 focus:ring-azure/15"
+              className="mt-2 w-full resize-none rounded-lg border border-command-line bg-command-raised p-4 text-sm leading-relaxed text-command-text outline-none placeholder:text-command-muted focus:border-azure/60 focus:ring-2 focus:ring-azure/15"
             />
-            <p className="mt-1.5 font-mono text-[10px] text-sub">
+            <p className="mt-2 font-mono text-[10px] text-command-muted">
               Supported Variables: {"{{project}}"} · {"{{name}}"} · {"{{price}}"}
             </p>
-          </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
             <div>
-              <Label>Language</Label>
+              <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-command-muted">Language</label>
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-line bg-white/80 px-3 py-2 text-sm outline-none"
+                className="mt-1.5 w-full rounded-lg border border-command-line bg-command-raised px-3 py-2.5 text-sm text-command-text outline-none focus:border-azure/60"
               >
                 {["English (India)", "Hindi", "Kannada", "Tamil", "Marathi"].map((l) => (
                   <option key={l} value={l}>
@@ -138,11 +141,11 @@ function AgentPage() {
               </select>
             </div>
             <div>
-              <Label>Voice</Label>
+              <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-command-muted">Voice</label>
               <select
                 value={selectedVoice}
                 onChange={(e) => setSelectedVoice(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-line bg-white/80 px-3 py-2 text-sm outline-none"
+                className="mt-1.5 w-full rounded-lg border border-command-line bg-command-raised px-3 py-2.5 text-sm text-command-text outline-none focus:border-azure/60"
               >
                 {voices.map((v) => (
                   <option key={v.name} value={v.label}>
@@ -152,11 +155,11 @@ function AgentPage() {
               </select>
             </div>
             <div>
-              <Label>Speaking pace</Label>
+              <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-command-muted">Speaking pace</label>
               <select
                 value={selectedPace}
                 onChange={(e) => setSelectedPace(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-line bg-white/80 px-3 py-2 text-sm outline-none"
+                className="mt-1.5 w-full rounded-lg border border-command-line bg-command-raised px-3 py-2.5 text-sm text-command-text outline-none focus:border-azure/60"
               >
                 {["Slow", "Natural", "Brisk"].map((p) => (
                   <option key={p} value={p}>
@@ -168,19 +171,22 @@ function AgentPage() {
           </div>
 
           {/* Phone Calling & Dialer Section */}
-          <div className="mt-6 border-t border-line/70 pt-4">
+          <div className="mt-6 border-t border-command-line pt-5">
             <div className="flex items-center justify-between">
-              <Label>Phone Calling & Test Dialer</Label>
+              <div className="flex items-center gap-2">
+                <Activity aria-hidden="true" className="size-3.5 text-azure" />
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-command-muted">Test calling</span>
+              </div>
               <button
                 type="button"
                 onClick={() => setDialerOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-line bg-white/90 px-2.5 py-1 text-xs font-semibold text-azure hover:bg-azure/5 transition-colors"
+                className="flex items-center gap-1.5 rounded-lg border border-command-line bg-command-raised px-2.5 py-1.5 text-xs font-semibold text-azure transition-colors hover:border-azure/50"
               >
                 <Grid3X3 size={13} />
                 <span>Open 0-9 Keypad</span>
               </button>
             </div>
-            <p className="font-mono text-[11px] text-sub mb-2 mt-0.5">
+            <p className="mb-3 mt-1 font-mono text-[10px] text-command-muted">
               Enter phone number, tap 0-9 keypad, or select a lead to listen to an immediate live demonstration call
             </p>
 
@@ -190,11 +196,11 @@ function AgentPage() {
                 value={testNumber}
                 onChange={(e) => setTestNumber(e.target.value)}
                 placeholder="+91 98765 43210"
-                className="min-w-[220px] flex-1 rounded-lg border border-line bg-white/80 px-3 py-2 text-sm font-mono outline-none focus:border-azure/50 focus:ring-2 focus:ring-azure/15"
+                className="min-w-[220px] flex-1 rounded-lg border border-command-line bg-command-raised px-3 py-2.5 font-mono text-sm text-command-text outline-none placeholder:text-command-muted focus:border-azure/60 focus:ring-2 focus:ring-azure/15"
               />
               <ButtonAzure
                 onClick={() => handleTriggerTestCall(testNumber)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 py-2.5"
               >
                 <PhoneCall size={15} />
                 <span>Dial Call (Live Audio)</span>
@@ -203,7 +209,7 @@ function AgentPage() {
 
             {/* Quick Contact Chips */}
             <div className="mt-3">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-sub block mb-1">
+              <span className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-command-muted">
                 Quick Dial Lead Contacts:
               </span>
               <div className="flex flex-wrap gap-2">
@@ -215,13 +221,13 @@ function AgentPage() {
                       setTestNumber(c.phone);
                       handleTriggerTestCall(c.phone, c.name);
                     }}
-                    className="flex items-center gap-1.5 rounded-lg border border-line/80 bg-white/70 px-2.5 py-1 text-xs font-medium text-ink hover:border-azure/40 hover:bg-azure/5 transition-all shadow-2xs"
+                    className="flex items-center gap-1.5 rounded-lg border border-command-line bg-command-raised px-2.5 py-1.5 text-xs font-medium text-command-text transition-colors hover:border-azure/50"
                   >
                     <span className={`grid size-4 place-items-center rounded-full text-[9px] font-bold text-white ${c.avatarColor}`}>
                       {c.name[0]}
                     </span>
                     <span>{c.name}</span>
-                    <span className="font-mono text-[10px] text-sub">({c.phone.slice(-5)})</span>
+                    <span className="font-mono text-[10px] text-command-muted">({c.phone.slice(-5)})</span>
                   </button>
                 ))}
               </div>
@@ -236,6 +242,7 @@ function AgentPage() {
                 {testSuccessMessage}
               </p>
             )}
+          </div>
           </div>
         </Panel>
 

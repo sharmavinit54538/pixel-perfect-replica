@@ -14,6 +14,11 @@
   --color-good: #0e9d6a;
   --color-warn: #d97706;
   --color-bad: #e0473a;
+  --color-command: #0c1016;
+  --color-command-raised: #141a22;
+  --color-command-line: #263140;
+  --color-command-text: #f3f6fa;
+  --color-command-muted: #8b9aae;
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 }
