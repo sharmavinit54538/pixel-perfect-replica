@@ -127,8 +127,39 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
 
     const lovableApiKey = process.env["LOVABLE_API_KEY"];
     const whatsappApiKey = process.env["WHATSAPP_API_KEY"];
+    const metaBaseUrl = process.env["WHATSAPP_API_BASE_URL"];
+    const metaPhoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
 
-    if (!lovableApiKey || !whatsappApiKey) {
+    // Prefer the direct Meta Cloud API when the business credentials are
+    // provided; otherwise fall back to the Lovable WhatsApp connector gateway.
+    const sendBody = JSON.stringify({
+      messaging_product: "whatsapp",
+      to: recipientPhone,
+      type: "text",
+      text: { preview_url: false, body: data.message },
+    });
+
+    let requestInit: { url: string; headers: Record<string, string> } | null = null;
+    if (whatsappApiKey && metaBaseUrl && metaPhoneNumberId) {
+      requestInit = {
+        url: `${metaBaseUrl.replace(/\/$/, "")}/${metaPhoneNumberId}/messages`,
+        headers: {
+          Authorization: `Bearer ${whatsappApiKey}`,
+          "Content-Type": "application/json",
+        },
+      };
+    } else if (lovableApiKey && whatsappApiKey) {
+      requestInit = {
+        url: "https://connector-gateway.lovable.dev/whatsapp/messages",
+        headers: {
+          Authorization: `Bearer ${lovableApiKey}`,
+          "X-Connection-Api-Key": whatsappApiKey,
+          "Content-Type": "application/json",
+        },
+      };
+    }
+
+    if (!requestInit) {
       const { error } = await context.supabase
         .from("whatsapp_messages")
         .update({ status: "failed", error_reason: "WhatsApp connection is not configured." })
@@ -146,35 +177,28 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
 
     let response: Response;
     let providerMessageId: string | undefined;
+    let providerErrorMessage: string | undefined;
     try {
-      response = await fetch("https://connector-gateway.lovable.dev/whatsapp/messages", {
+      response = await fetch(requestInit.url, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
-          "X-Connection-Api-Key": whatsappApiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: recipientPhone,
-          type: "text",
-          text: { preview_url: false, body: data.message },
-        }),
+        headers: requestInit.headers,
+        body: sendBody,
       });
 
       const providerPayload = (await response.json().catch(() => null)) as
         | { messages?: Array<{ id?: string }>; error?: { message?: string } }
         | null;
       providerMessageId = providerPayload?.messages?.[0]?.id;
-      if (!response.ok && providerPayload?.error?.message) {
-        console.error(`WhatsApp gateway request failed [${response.status}]: ${providerPayload.error.message}`);
+      providerErrorMessage = providerPayload?.error?.message;
+      if (!response.ok && providerErrorMessage) {
+        console.error(`WhatsApp send failed [${response.status}]: ${providerErrorMessage}`);
       }
     } catch {
       response = new Response(null, { status: 503 });
     }
 
     if (!response.ok || !providerMessageId) {
-      const errorReason = friendlyProviderError(response.status);
+      const errorReason = providerErrorMessage ?? friendlyProviderError(response.status);
       const { error: failedStatusError } = await context.supabase
         .from("whatsapp_messages")
         .update({ status: "failed", error_reason: errorReason })
