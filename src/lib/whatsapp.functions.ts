@@ -190,7 +190,7 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
       });
 
       const providerPayload = (await response.json().catch(() => null)) as
-        | { messages?: Array<{ id?: string }>; error?: { message?: string } }
+        | { messages?: Array<{ id?: string }>; error?: { message?: string; code?: string | number; title?: string } }
         | null;
       providerMessageId = providerPayload?.messages?.[0]?.id;
       providerErrorMessage = providerPayload?.error?.message;
