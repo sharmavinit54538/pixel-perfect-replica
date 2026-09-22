@@ -243,7 +243,7 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
             return new Response("Webhook processing state could not be saved", { status: 500 });
           }
           console.error("WhatsApp webhook processing failed", error);
-          return Response.json({ ok: true, pending: true });
+          return Response.json({ ok: false, pending: true }, { status: 500 });
         }
       },
     },
