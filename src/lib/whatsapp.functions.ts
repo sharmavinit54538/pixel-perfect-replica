@@ -139,8 +139,12 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
       text: { preview_url: false, body: data.message },
     });
 
+    const hasDirectWhatsAppConfig = Boolean(whatsappApiKey || metaBaseUrl || metaPhoneNumberId);
     let requestInit: { url: string; headers: Record<string, string> } | null = null;
-    if (whatsappApiKey && metaBaseUrl && metaPhoneNumberId) {
+    let configurationError = "WhatsApp connection is not configured.";
+    if (hasDirectWhatsAppConfig && (!whatsappApiKey || !metaBaseUrl || !metaPhoneNumberId)) {
+      configurationError = "WhatsApp direct connection is incomplete. Check the business access token, API URL, and phone number ID.";
+    } else if (whatsappApiKey && metaBaseUrl && metaPhoneNumberId) {
       requestInit = {
         url: `${metaBaseUrl.replace(/\/$/, "")}/${metaPhoneNumberId}/messages`,
         headers: {
@@ -162,7 +166,7 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
     if (!requestInit) {
       const { error } = await context.supabase
         .from("whatsapp_messages")
-        .update({ status: "failed", error_reason: "WhatsApp connection is not configured." })
+        .update({ status: "failed", error_reason: configurationError })
         .eq("id", pendingMessage.id)
         .eq("user_id", context.userId);
       if (error) throw new Error("The message was queued, but its failed status could not be saved.");
@@ -171,7 +175,7 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
         conversationId,
         messageId: pendingMessage.id,
         status: "failed",
-        errorReason: "WhatsApp connection is not configured.",
+        errorReason: configurationError,
       } as const;
     }
 
@@ -186,10 +190,15 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
       });
 
       const providerPayload = (await response.json().catch(() => null)) as
-        | { messages?: Array<{ id?: string }>; error?: { message?: string } }
+        | { messages?: Array<{ id?: string }>; error?: { message?: string; code?: string | number; title?: string } }
         | null;
       providerMessageId = providerPayload?.messages?.[0]?.id;
       providerErrorMessage = providerPayload?.error?.message;
+      if (!providerErrorMessage && providerPayload?.error) {
+        providerErrorMessage = [providerPayload.error.code, providerPayload.error.title]
+          .filter(Boolean)
+          .join(": ");
+      }
       if (!response.ok && providerErrorMessage) {
         console.error(`WhatsApp send failed [${response.status}]: ${providerErrorMessage}`);
       }
