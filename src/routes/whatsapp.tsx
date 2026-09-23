@@ -107,6 +107,7 @@ function WhatsAppPage() {
   const [notice, setNotice] = useState<{ tone: "good" | "bad"; text: string } | null>(null);
   const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
 
   const conversations = (inboxFn.data?.conversations ?? []) as Conversation[];
   const contacts = useMemo<WorkspaceContact[]>(() => {
@@ -184,6 +185,7 @@ function WhatsAppPage() {
         recipientPhone: selectedContact.phone,
         contactName: selectedContact.name,
         message: message.trim(),
+        requestId,
       },
     });
     if (!result.ok) {
@@ -191,6 +193,7 @@ function WhatsAppPage() {
       return;
     }
     setMessage("");
+    setRequestId(crypto.randomUUID());
     setNotice({ tone: "good", text: "Message sent to WhatsApp. Delivery updates will appear here." });
     await queryClient.invalidateQueries({ queryKey: ["whatsapp", "inbox"] });
     setSelectedPhone(selectedContact.phone);

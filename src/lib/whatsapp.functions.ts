@@ -15,6 +15,7 @@ const sendMessageSchema = z.object({
   recipientPhone: phoneSchema,
   contactName: z.string().trim().min(1).max(120),
   message: z.string().trim().min(1, "Write a message first.").max(4096, "Message is too long."),
+  requestId: z.string().uuid().optional(),
 });
 
 const conversationSchema = z.object({ conversationId: z.string().uuid() });
@@ -28,15 +29,6 @@ function friendlyProviderError(status: number) {
   if (status === 400) return "WhatsApp rejected this message. Check the number or use an approved template.";
   if (status === 429) return "WhatsApp is temporarily rate-limiting messages. Try again shortly.";
   return "WhatsApp could not accept the message right now. Try again shortly.";
-}
-
-function initialsForName(name: string) {
-  return name
-    .split(/\s+/)
-    .map((part) => part[0] ?? "")
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 }
 
 export const getWhatsAppInbox = createServerFn({ method: "GET" })
@@ -76,6 +68,26 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
   .inputValidator((input) => sendMessageSchema.parse(input))
   .handler(async ({ data, context }) => {
     const recipientPhone = normalizePhone(data.recipientPhone);
+    const clientRequestId = data.requestId ?? crypto.randomUUID();
+    const { data: existingRequest, error: existingRequestError } = await context.supabase
+      .from("whatsapp_messages")
+      .select("id, conversation_id, status, provider_message_id, error_reason")
+      .eq("user_id", context.userId)
+      .eq("client_request_id", clientRequestId)
+      .maybeSingle();
+
+    if (existingRequestError) throw new Error("Could not check the message request.");
+    if (existingRequest) {
+      return {
+        ok: existingRequest.status !== "failed" && Boolean(existingRequest.provider_message_id),
+        conversationId: existingRequest.conversation_id,
+        messageId: existingRequest.id,
+        status: existingRequest.status,
+        ...(existingRequest.provider_message_id ? { providerMessageId: existingRequest.provider_message_id } : {}),
+        ...(existingRequest.error_reason ? { errorReason: existingRequest.error_reason } : {}),
+      } as const;
+    }
+
     const { data: existingConversation, error: conversationLookupError } = await context.supabase
       .from("whatsapp_conversations")
       .select("id")
@@ -119,19 +131,17 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
         message_type: "text",
         body: data.message,
         status: "sending",
+        client_request_id: clientRequestId,
       })
       .select("id")
       .single();
 
     if (messageInsertError || !pendingMessage) throw new Error("Could not queue the WhatsApp message.");
 
-    const lovableApiKey = process.env["LOVABLE_API_KEY"];
     const whatsappApiKey = process.env["WHATSAPP_API_KEY"];
     const metaBaseUrl = process.env["WHATSAPP_API_BASE_URL"];
     const metaPhoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
 
-    // Prefer the direct Meta Cloud API when the business credentials are
-    // provided; otherwise fall back to the Lovable WhatsApp connector gateway.
     const sendBody = JSON.stringify({
       messaging_product: "whatsapp",
       to: recipientPhone,
@@ -139,29 +149,16 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
       text: { preview_url: false, body: data.message },
     });
 
-    const hasDirectWhatsAppConfig = Boolean(whatsappApiKey || metaBaseUrl || metaPhoneNumberId);
-    let requestInit: { url: string; headers: Record<string, string> } | null = null;
-    let configurationError = "WhatsApp connection is not configured.";
-    if (hasDirectWhatsAppConfig && (!whatsappApiKey || !metaBaseUrl || !metaPhoneNumberId)) {
-      configurationError = "WhatsApp direct connection is incomplete. Check the business access token, API URL, and phone number ID.";
-    } else if (whatsappApiKey && metaBaseUrl && metaPhoneNumberId) {
-      requestInit = {
-        url: `${metaBaseUrl.replace(/\/$/, "")}/${metaPhoneNumberId}/messages`,
-        headers: {
-          Authorization: `Bearer ${whatsappApiKey}`,
-          "Content-Type": "application/json",
-        },
-      };
-    } else if (lovableApiKey && whatsappApiKey) {
-      requestInit = {
-        url: "https://connector-gateway.lovable.dev/whatsapp/messages",
-        headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
-          "X-Connection-Api-Key": whatsappApiKey,
-          "Content-Type": "application/json",
-        },
-      };
-    }
+    const requestInit = whatsappApiKey && metaBaseUrl && metaPhoneNumberId
+      ? {
+          url: `${metaBaseUrl.replace(/\/$/, "")}/${metaPhoneNumberId}/messages`,
+          headers: {
+            Authorization: `Bearer ${whatsappApiKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      : null;
+    const configurationError = "WhatsApp direct connection is incomplete. Check the business access token, API URL, and phone number ID.";
 
     if (!requestInit) {
       const { error } = await context.supabase
@@ -183,15 +180,23 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
     let providerMessageId: string | undefined;
     let providerErrorMessage: string | undefined;
     try {
+      const { error: attemptError } = await context.supabase
+        .from("whatsapp_messages")
+        .update({ delivery_attempted_at: new Date().toISOString() })
+        .eq("id", pendingMessage.id)
+        .eq("user_id", context.userId);
+      if (attemptError) throw new Error("Could not record the WhatsApp delivery attempt.");
+
       response = await fetch(requestInit.url, {
         method: "POST",
         headers: requestInit.headers,
         body: sendBody,
       });
 
-      const providerPayload = (await response.json().catch(() => null)) as
-        | { messages?: Array<{ id?: string }>; error?: { message?: string; code?: string | number; title?: string } }
-        | null;
+      const providerPayload = (await response.json().catch(() => null)) as {
+        messages?: Array<{ id?: string }>;
+        error?: { message?: string; code?: string | number; title?: string };
+      } | null;
       providerMessageId = providerPayload?.messages?.[0]?.id;
       providerErrorMessage = providerPayload?.error?.message;
       if (!providerErrorMessage && providerPayload?.error) {
@@ -202,12 +207,13 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
       if (!response.ok && providerErrorMessage) {
         console.error(`WhatsApp send failed [${response.status}]: ${providerErrorMessage}`);
       }
-    } catch {
+    } catch (error) {
+      console.error("WhatsApp send request failed", error);
       response = new Response(null, { status: 503 });
     }
 
     if (!response.ok || !providerMessageId) {
-      const errorReason = providerErrorMessage ?? friendlyProviderError(response.status);
+      const errorReason = friendlyProviderError(response.status);
       const { error: failedStatusError } = await context.supabase
         .from("whatsapp_messages")
         .update({ status: "failed", error_reason: errorReason })
