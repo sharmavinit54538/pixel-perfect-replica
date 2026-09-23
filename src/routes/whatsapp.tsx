@@ -104,6 +104,7 @@ function WhatsAppPage() {
   const [selectedPhone, setSelectedPhone] = useState("");
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
   const [notice, setNotice] = useState<{ tone: "good" | "bad"; text: string } | null>(null);
   const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -137,13 +138,26 @@ function WhatsAppPage() {
     return haystack.includes(search.toLowerCase());
   });
   const selectedContact = contacts.find((contact) => digits(contact.phone) === digits(selectedPhone));
+  const manualContact: WorkspaceContact | undefined = digits(manualPhone).length >= 8
+    ? {
+        id: "manual-recipient",
+        name: "Manual recipient",
+        phone: manualPhone,
+        project: "Manual WhatsApp number",
+        avatarInitials: "WA",
+      }
+    : undefined;
+  const activeContact = selectedContact ?? (digits(manualPhone) === digits(selectedPhone) ? manualContact : undefined);
   const selectedConversation = conversations.find(
     (conversation) => digits(conversation.phone_number) === digits(selectedContact?.phone ?? selectedPhone),
   );
 
   useEffect(() => {
     const phoneFromLead = new URLSearchParams(window.location.search).get("phone");
-    if (phoneFromLead) setSelectedPhone(phoneFromLead);
+    if (phoneFromLead) {
+      setManualPhone(phoneFromLead);
+      setSelectedPhone(phoneFromLead);
+    }
   }, []);
 
   useEffect(() => {
@@ -178,12 +192,12 @@ function WhatsAppPage() {
   };
 
   const handleSend = async () => {
-    if (!selectedContact || !message.trim() || sendFn.isPending) return;
+    if (!activeContact || !message.trim() || sendFn.isPending) return;
     setNotice(null);
     const result = await sendFn.mutateAsync({
       data: {
-        recipientPhone: selectedContact.phone,
-        contactName: selectedContact.name,
+        recipientPhone: activeContact.phone,
+        contactName: activeContact.name,
         message: message.trim(),
         requestId,
       },
@@ -196,7 +210,7 @@ function WhatsAppPage() {
     setRequestId(crypto.randomUUID());
     setNotice({ tone: "good", text: "Message sent to WhatsApp. Delivery updates will appear here." });
     await queryClient.invalidateQueries({ queryKey: ["whatsapp", "inbox"] });
-    setSelectedPhone(selectedContact.phone);
+    setSelectedPhone(activeContact.phone);
     setConversationMessages((current) => [
       ...current,
       {
@@ -259,6 +273,27 @@ function WhatsAppPage() {
                 className="min-w-0 flex-1 bg-transparent text-xs outline-none"
               />
             </label>
+            <div className="mt-3 flex gap-2">
+              <input
+                value={manualPhone}
+                onChange={(event) => setManualPhone(event.target.value)}
+                placeholder="+91 93516 08590"
+                inputMode="tel"
+                aria-label="Manual WhatsApp number"
+                className="min-w-0 flex-1 rounded-lg border border-line bg-white/80 px-2.5 py-2 text-xs outline-none focus:border-azure/50 focus:ring-2 focus:ring-azure/15"
+              />
+              <ButtonGhost
+                onClick={() => {
+                  if (digits(manualPhone).length >= 8) {
+                    setSelectedPhone(manualPhone);
+                    setNotice(null);
+                  }
+                }}
+                className="shrink-0 px-2.5 text-xs"
+              >
+                Use number
+              </ButtonGhost>
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {visibleContacts.map((contact) => {
@@ -293,14 +328,14 @@ function WhatsAppPage() {
         </Panel>
 
         <Panel className="flex min-h-0 flex-col overflow-hidden">
-          {selectedContact ? (
+          {activeContact ? (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="grid size-10 place-items-center rounded-xl bg-good/10 text-sm font-bold text-good">{initials(selectedContact.name)}</div>
                   <div>
-                    <div className="text-sm font-bold">{selectedContact.name}</div>
-                    <div className="font-mono text-[11px] text-sub">+{digits(selectedContact.phone)} · {selectedContact.project}</div>
+                    <div className="text-sm font-bold">{activeContact.name}</div>
+                    <div className="font-mono text-[11px] text-sub">+{digits(activeContact.phone)} · {activeContact.project}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-good">
@@ -313,7 +348,7 @@ function WhatsAppPage() {
                   <div className="flex h-full min-h-[280px] flex-col items-center justify-center text-center">
                     <div className="grid size-12 place-items-center rounded-2xl bg-good/10 text-good"><Smartphone size={22} aria-hidden="true" /></div>
                     <div className="mt-3 text-sm font-bold">Start a conversation</div>
-                    <p className="mt-1 max-w-xs text-xs leading-relaxed text-sub">Send the first message to {selectedContact.name}. It will appear here with its delivery status.</p>
+                     <p className="mt-1 max-w-xs text-xs leading-relaxed text-sub">Send the first message to {activeContact.name}. It will appear here with its delivery status.</p>
                   </div>
                 ) : messagesLoading ? (
                   <div className="flex h-full min-h-[280px] items-center justify-center text-sm text-sub">Loading messages…</div>
@@ -348,7 +383,7 @@ function WhatsAppPage() {
                   onChange={(event) => setMessage(event.target.value)}
                   maxLength={4096}
                   rows={3}
-                  placeholder={`Write a message to ${selectedContact.name.split(" ")[0]}…`}
+                  placeholder={`Write a message to ${activeContact.name.split(" ")[0]}…`}
                   className="w-full resize-none rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-azure/50 focus:ring-2 focus:ring-azure/15"
                 />
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">

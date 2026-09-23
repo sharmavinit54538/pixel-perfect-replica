@@ -9,4 +9,4 @@
 - [x] Make direct Meta sending single-path, idempotent, and safe from raw provider errors
 - [x] Add delivery-attempt tracking and protect WhatsApp conversations from duplicates
 - [ ] Add Meta webhook verification secrets and verify a real callback in the inbox
-- [ ] Allow a one-off WhatsApp message to 9351608590
+- [x] Add manual recipient support for a one-off WhatsApp message to 9351608590
