@@ -138,11 +138,15 @@ function WhatsAppPage() {
     return haystack.includes(search.toLowerCase());
   });
   const selectedContact = contacts.find((contact) => digits(contact.phone) === digits(selectedPhone));
+  const formatRecipientPhone = (value: string) => {
+    const phoneDigits = digits(value);
+    return phoneDigits.length === 10 ? `+91${phoneDigits}` : value;
+  };
   const manualContact: WorkspaceContact | undefined = digits(manualPhone).length >= 8
     ? {
         id: "manual-recipient",
         name: "Manual recipient",
-        phone: manualPhone,
+        phone: formatRecipientPhone(manualPhone),
         project: "Manual WhatsApp number",
         avatarInitials: "WA",
       }
@@ -155,8 +159,9 @@ function WhatsAppPage() {
   useEffect(() => {
     const phoneFromLead = new URLSearchParams(window.location.search).get("phone");
     if (phoneFromLead) {
-      setManualPhone(phoneFromLead);
-      setSelectedPhone(phoneFromLead);
+      const formattedPhone = formatRecipientPhone(phoneFromLead);
+      setManualPhone(formattedPhone);
+      setSelectedPhone(formattedPhone);
     }
   }, []);
 
@@ -285,7 +290,10 @@ function WhatsAppPage() {
               <ButtonGhost
                 onClick={() => {
                   if (digits(manualPhone).length >= 8) {
-                    setSelectedPhone(manualPhone);
+                    const formattedPhone = formatRecipientPhone(manualPhone);
+                    setManualPhone(formattedPhone);
+                    setSelectedPhone(formattedPhone);
+                    setRequestId(crypto.randomUUID());
                     setNotice(null);
                   }
                 }}
@@ -332,7 +340,7 @@ function WhatsAppPage() {
             <>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-10 place-items-center rounded-xl bg-good/10 text-sm font-bold text-good">{initials(selectedContact.name)}</div>
+                  <div className="grid size-10 place-items-center rounded-xl bg-good/10 text-sm font-bold text-good">{initials(activeContact.name)}</div>
                   <div>
                     <div className="text-sm font-bold">{activeContact.name}</div>
                     <div className="font-mono text-[11px] text-sub">+{digits(activeContact.phone)} · {activeContact.project}</div>
