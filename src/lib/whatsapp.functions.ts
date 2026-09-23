@@ -117,8 +117,18 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
         .select("id")
         .single();
 
-      if (error || !createdConversation) throw new Error("Could not create the WhatsApp conversation.");
-      conversationId = createdConversation.id;
+      if (error || !createdConversation) {
+        const { data: racedConversation, error: racedConversationError } = await context.supabase
+          .from("whatsapp_conversations")
+          .select("id")
+          .eq("user_id", context.userId)
+          .eq("phone_number", recipientPhone)
+          .maybeSingle();
+        if (racedConversationError || !racedConversation) throw new Error("Could not create the WhatsApp conversation.");
+        conversationId = racedConversation.id;
+      } else {
+        conversationId = createdConversation.id;
+      }
     }
 
     const { data: pendingMessage, error: messageInsertError } = await context.supabase

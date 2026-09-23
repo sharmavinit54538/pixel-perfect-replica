@@ -189,7 +189,7 @@ function WhatsAppPage() {
       },
     });
     if (!result.ok) {
-      setNotice({ tone: "bad", text: result.errorReason });
+      setNotice({ tone: "bad", text: result.errorReason ?? "WhatsApp could not send this message." });
       return;
     }
     setMessage("");
