@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS public.whatsapp_conversations_phone_number_idx;
+CREATE UNIQUE INDEX whatsapp_conversations_user_phone_number_idx ON public.whatsapp_conversations(user_id, phone_number);

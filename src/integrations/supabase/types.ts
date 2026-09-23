@@ -86,8 +86,10 @@ export type Database = {
       whatsapp_messages: {
         Row: {
           body: string | null
+          client_request_id: string | null
           conversation_id: string
           created_at: string
+          delivery_attempted_at: string | null
           direction: string
           error_reason: string | null
           id: string
@@ -102,8 +104,10 @@ export type Database = {
         }
         Insert: {
           body?: string | null
+          client_request_id?: string | null
           conversation_id: string
           created_at?: string
+          delivery_attempted_at?: string | null
           direction: string
           error_reason?: string | null
           id?: string
@@ -118,8 +122,10 @@ export type Database = {
         }
         Update: {
           body?: string | null
+          client_request_id?: string | null
           conversation_id?: string
           created_at?: string
+          delivery_attempted_at?: string | null
           direction?: string
           error_reason?: string | null
           id?: string

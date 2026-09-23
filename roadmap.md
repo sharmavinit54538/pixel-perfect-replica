@@ -6,3 +6,7 @@
 - [x] Secure the provided WhatsApp connection values without exposing them in app code
 
 - [x] Polish the selected AI Calling Assistant panel and controls
+- [x] Make direct Meta sending single-path, idempotent, and safe from raw provider errors
+- [x] Add delivery-attempt tracking and protect WhatsApp conversations from duplicates
+- [ ] Add Meta webhook verification secrets and verify a real callback in the inbox
+- [x] Add manual recipient support for a one-off WhatsApp message to 9351608590
