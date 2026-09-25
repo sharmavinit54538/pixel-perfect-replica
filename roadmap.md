@@ -8,5 +8,6 @@
 - [x] Polish the selected AI Calling Assistant panel and controls
 - [x] Make direct Meta sending single-path, idempotent, and safe from raw provider errors
 - [x] Add delivery-attempt tracking and protect WhatsApp conversations from duplicates
-- [ ] Add Meta webhook verification secrets and verify a real callback in the inbox
+- [x] Add Meta webhook verification handling: GET hub.challenge handshake via WHATSAPP_VERIFY_TOKEN and direct POST validation via X-Hub-Signature-256/WHATSAPP_APP_SECRET (secrets stay server-side, placeholders documented in .env.example)
+- [ ] Verify a real Meta callback in the inbox — code implemented and locally verified; still requires Meta Dashboard webhook configuration with valid Meta credentials (see .env.example)
 - [x] Add manual recipient support for a one-off WhatsApp message to 9351608590
